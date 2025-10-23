@@ -2,6 +2,19 @@
 name = "chroma-ls"
 version = "0.1.0"
 edition = "2024"
+authors = ["skewb1k <skewb1kunix@gmail.com>"]
+description = "LSP server for highlighting colors in source files"
+license = "MIT"
+repository = "https://github.com/skewb1k/chroma-ls"
+
+[profile.release]
+strip = true
+lto = true
+panic = "abort"
+
+[[bin]]
+name = "chroma-ls"
+path = "src/main.rs"
 
 [dependencies]
 regex = "1.12.2"
