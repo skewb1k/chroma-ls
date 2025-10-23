@@ -2,6 +2,7 @@
 
 Tiny LSP server for highlighting color literals in source files.
 It implements only the [textDocument/documentColor](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#textDocument_documentColor) method.
+<img alt="Preview" src="https://github.com/user-attachments/assets/b53bf537-4169-4e40-be88-6e7f803d4c24" />
 
 ## Installation
 
