@@ -17,6 +17,6 @@ name = "chroma-ls"
 path = "src/main.rs"
 
 [dependencies]
-regex = "1.12.2"
-tokio = { version = "1.48.0", features = ["full"] }
-tower-lsp-server = "0.22.1"
+regex = "1"
+tokio = { version = "1", features = ["full"] }
+tower-lsp-server = "0.22"
