@@ -1,19 +1,10 @@
 use regex::Regex;
 use std::collections::HashMap;
-use std::sync::OnceLock;
 use tokio::sync::RwLock;
 
 use tower_lsp_server::jsonrpc::Result;
 use tower_lsp_server::lsp_types::*;
 use tower_lsp_server::{Client, LanguageServer, LspService, Server};
-
-fn color_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"#(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})?")
-            .unwrap()
-    })
-}
 
 /// Converts a hex color string (e.g. `#RRGGBB` or `#RRGGBBAA`) into a `Color`.
 ///
@@ -40,6 +31,7 @@ struct Backend {
     #[allow(dead_code)]
     client: Client,
     documents: RwLock<HashMap<Uri, String>>,
+    color_regex: Regex,
 }
 
 impl LanguageServer for Backend {
@@ -98,7 +90,7 @@ impl LanguageServer for Backend {
 
         let mut colors = Vec::new();
         for (line_idx, line_text) in text.lines().enumerate() {
-            for mat in color_regex().find_iter(line_text) {
+            for mat in self.color_regex.find_iter(line_text) {
                 let color = hex_to_color(mat.as_str());
                 let range = Range {
                     start: Position {
@@ -122,9 +114,14 @@ async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
+    let color_regex =
+        Regex::new(r"#(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})?")
+            .unwrap();
+
     let (service, socket) = LspService::new(|client| Backend {
         client,
         documents: RwLock::new(HashMap::new()),
+        color_regex,
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
