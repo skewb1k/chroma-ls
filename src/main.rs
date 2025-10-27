@@ -58,7 +58,7 @@ impl LanguageServer for Backend {
         self.documents
             .write()
             .await
-            .insert(uri, Document { content });
+            .insert(uri, Document::from_str(&content));
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
@@ -66,14 +66,9 @@ impl LanguageServer for Backend {
         if let Some(change) = params.content_changes.into_iter().last() {
             let mut docs = self.documents.write().await;
             if let Some(doc) = docs.get_mut(&uri) {
-                doc.content = change.text;
+                doc.edit(&change.text);
             } else {
-                docs.insert(
-                    uri,
-                    Document {
-                        content: change.text,
-                    },
-                );
+                docs.insert(uri, Document::from_str(&change.text));
             }
         }
     }
