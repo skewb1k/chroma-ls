@@ -9,33 +9,31 @@ use tower_lsp_server::{Client, LanguageServer, LspService, Server};
 
 fn color_regex() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"#([0-9A-Fa-f]{6,8})").unwrap())
+    RE.get_or_init(|| {
+        Regex::new(r"#(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})?")
+            .unwrap()
+    })
 }
 
-// TODO: add tests.
-fn hex_to_color(hex: &str) -> Option<Color> {
-    let len = hex.len();
-    let (r, g, b, a) = match len {
-        6 => (
-            u8::from_str_radix(&hex[0..2], 16).ok()?,
-            u8::from_str_radix(&hex[2..4], 16).ok()?,
-            u8::from_str_radix(&hex[4..6], 16).ok()?,
-            255,
-        ),
-        8 => (
-            u8::from_str_radix(&hex[0..2], 16).ok()?,
-            u8::from_str_radix(&hex[2..4], 16).ok()?,
-            u8::from_str_radix(&hex[4..6], 16).ok()?,
-            u8::from_str_radix(&hex[6..8], 16).ok()?,
-        ),
-        _ => return None,
-    };
-    Some(Color {
-        red: r as f32 / 255.0,
-        green: g as f32 / 255.0,
-        blue: b as f32 / 255.0,
-        alpha: a as f32 / 255.0,
-    })
+/// Converts a hex color string (e.g. `#RRGGBB` or `#RRGGBBAA`) into a `Color`.
+///
+/// This function assumes the input string matches the `color_regex()` pattern,
+/// meaning it always starts with `#` and contains 6 or 8 valid hexadecimal digits.
+fn hex_to_color(hex: &str) -> Color {
+    fn float_from_hex(hex: &str, i: usize) -> f32 {
+        u8::from_str_radix(&hex[i..i + 2], 16).unwrap() as f32 / 255.0
+    }
+
+    Color {
+        red: float_from_hex(hex, 1),
+        green: float_from_hex(hex, 3),
+        blue: float_from_hex(hex, 5),
+        alpha: if hex.len() == 9 {
+            float_from_hex(hex, 7)
+        } else {
+            1.0
+        },
+    }
 }
 
 struct Backend {
@@ -101,23 +99,18 @@ impl LanguageServer for Backend {
         let mut colors = Vec::new();
         for (line_idx, line_text) in text.lines().enumerate() {
             for mat in color_regex().find_iter(line_text) {
-                let start_char = line_text[..mat.start()].chars().count() as u32;
-                let end_char = line_text[..mat.end()].chars().count() as u32;
-
-                let hex = &line_text[mat.start() + 1..mat.end()];
-                if let Some(color) = hex_to_color(hex) {
-                    let range = Range {
-                        start: Position {
-                            line: line_idx as u32,
-                            character: start_char,
-                        },
-                        end: Position {
-                            line: line_idx as u32,
-                            character: end_char,
-                        },
-                    };
-                    colors.push(ColorInformation { range, color });
-                }
+                let color = hex_to_color(mat.as_str());
+                let range = Range {
+                    start: Position {
+                        line: line_idx as u32,
+                        character: mat.start() as u32,
+                    },
+                    end: Position {
+                        line: line_idx as u32,
+                        character: mat.end() as u32,
+                    },
+                };
+                colors.push(ColorInformation { range, color });
             }
         }
         Ok(colors)
