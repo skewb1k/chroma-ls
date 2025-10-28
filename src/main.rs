@@ -1,4 +1,6 @@
-mod document;
+pub mod color;
+pub mod document;
+
 use document::Document;
 
 use std::collections::HashMap;
@@ -57,7 +59,7 @@ impl LanguageServer for Backend {
         self.documents
             .write()
             .await
-            .insert(uri, Document::from_str(&content));
+            .insert(uri, Document::from_text(&content));
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
