@@ -30,8 +30,7 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
                     TextDocumentSyncOptions {
                         open_close: Some(true),
-                        // TODO: support INCREMENTAL.
-                        change: Some(TextDocumentSyncKind::FULL),
+                        change: Some(TextDocumentSyncKind::INCREMENTAL),
                         ..Default::default()
                     },
                 )),
@@ -63,13 +62,14 @@ impl LanguageServer for Backend {
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
-        if let Some(change) = params.content_changes.into_iter().last() {
-            let mut docs = self.documents.write().await;
-            if let Some(doc) = docs.get_mut(&uri) {
-                doc.edit(&change.text);
-            } else {
-                docs.insert(uri, Document::from_str(&change.text));
-            }
+        let mut docs = self.documents.write().await;
+
+        // Get or create the document
+        let doc = docs.entry(uri.clone()).or_insert_with(Document::default);
+
+        // Apply all changes in order
+        for change in params.content_changes {
+            doc.edit(&change);
         }
     }
 
