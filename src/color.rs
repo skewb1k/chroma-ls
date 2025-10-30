@@ -31,21 +31,29 @@ fn hex_to_color(hex: &str) -> Color {
     }
 }
 
+fn byte_to_utf16_col(line: &str, byte_idx: usize) -> u32 {
+    line[..byte_idx].encode_utf16().count() as u32
+}
+
 pub fn parse_line_colors(line: &str, line_idx: usize) -> Vec<ColorInformation> {
     color_regex()
         .find_iter(line)
-        .map(|mat| ColorInformation {
-            range: Range {
-                start: Position {
-                    line: line_idx as u32,
-                    character: mat.start() as u32,
+        .map(|mat| {
+            let start_utf16 = byte_to_utf16_col(line, mat.start());
+            let end_utf16 = byte_to_utf16_col(line, mat.end());
+            ColorInformation {
+                range: Range {
+                    start: Position {
+                        line: line_idx as u32,
+                        character: start_utf16,
+                    },
+                    end: Position {
+                        line: line_idx as u32,
+                        character: end_utf16,
+                    },
                 },
-                end: Position {
-                    line: line_idx as u32,
-                    character: mat.end() as u32,
-                },
-            },
-            color: hex_to_color(mat.as_str()),
+                color: hex_to_color(mat.as_str()),
+            }
         })
         .collect()
 }
@@ -55,7 +63,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn get_colors_rgb() {
+    fn rgb() {
         let colors = parse_line_colors("#FF0000", 0);
         assert_eq!(colors.len(), 1);
 
@@ -63,10 +71,12 @@ mod tests {
         assert_eq!(c.color.red, 1.0);
         assert_eq!(c.color.green, 0.0);
         assert_eq!(c.color.blue, 0.0);
+        assert_eq!(c.range.start.character, 0);
+        assert_eq!(c.range.end.character, 7);
     }
 
     #[test]
-    fn get_colors_rgba() {
+    fn rgba() {
         let colors = parse_line_colors("#11223344", 0);
         assert_eq!(colors.len(), 1);
 
@@ -75,6 +85,45 @@ mod tests {
         assert_eq!(c.color.green, 0x22 as f32 / 255.0);
         assert_eq!(c.color.blue, 0x33 as f32 / 255.0);
         assert_eq!(c.color.alpha, 0x44 as f32 / 255.0);
+    }
+
+    #[test]
+    fn unicode_before() {
+        let colors = parse_line_colors("•#FF0000", 0);
+        assert_eq!(colors.len(), 1);
+
+        let c = &colors[0];
+        assert_eq!(c.color.red, 1.0);
+        assert_eq!(c.color.green, 0.0);
+        assert_eq!(c.color.blue, 0.0);
+        assert_eq!(c.range.start.character, 1);
+        assert_eq!(c.range.end.character, 8);
+    }
+
+    #[test]
+    fn multiple_unicode_before() {
+        let colors = parse_line_colors("• ☀️#FF0000", 0);
+        assert_eq!(colors.len(), 1);
+
+        let c = &colors[0];
+        assert_eq!(c.color.red, 1.0);
+        assert_eq!(c.color.green, 0.0);
+        assert_eq!(c.color.blue, 0.0);
+        assert_eq!(c.range.start.character, 4);
+        assert_eq!(c.range.end.character, 11);
+    }
+
+    #[test]
+    fn unicode_after() {
+        let colors = parse_line_colors("#FF0000•", 0);
+        assert_eq!(colors.len(), 1);
+
+        let c = &colors[0];
+        assert_eq!(c.color.red, 1.0);
+        assert_eq!(c.color.green, 0.0);
+        assert_eq!(c.color.blue, 0.0);
+        assert_eq!(c.range.start.character, 0);
+        assert_eq!(c.range.end.character, 7);
     }
 
     #[test]

@@ -66,19 +66,24 @@ impl Document {
             // Partial change
             Some(range) => {
                 let start_line = range.start.line as usize;
-                let start_char = range.start.character as usize;
                 let end_line = range.end.line as usize;
-                let end_char = range.end.character as usize;
 
                 // Ensure enough lines exist
                 while self.lines.len() <= end_line {
                     self.lines.push(Line::default());
                 }
 
+                let start_byte = utf16_to_byte_index(
+                    &self.lines[start_line].text,
+                    range.start.character as usize,
+                );
+                let end_byte =
+                    utf16_to_byte_index(&self.lines[end_line].text, range.end.character as usize);
+
                 let prefix = &self.lines[start_line].text
-                    [..start_char.min(self.lines[start_line].text.len())];
+                    [..start_byte.min(self.lines[start_line].text.len())];
                 let suffix =
-                    &self.lines[end_line].text[end_char.min(self.lines[end_line].text.len())..];
+                    &self.lines[end_line].text[end_byte.min(self.lines[end_line].text.len())..];
 
                 let mut new_lines: Vec<Line> = change
                     .text
@@ -134,6 +139,22 @@ impl Document {
     }
 }
 
+fn utf16_to_byte_index(line: &str, utf16_idx: usize) -> usize {
+    let mut count = 0;
+    for (byte_idx, _) in line.char_indices() {
+        if count == utf16_idx {
+            return byte_idx;
+        }
+        count += line[byte_idx..]
+            .chars()
+            .next()
+            .unwrap()
+            .encode_utf16(&mut [0; 2])
+            .len();
+    }
+    line.len()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::document::Document;
@@ -175,6 +196,28 @@ mod tests {
         assert_eq!(doc.to_string(), "#00FF00");
 
         assert_colors!(doc.get_colors(), (0.0, 1.0, 0.0, 1.0, 0, 0, 0, 7));
+    }
+
+    #[test]
+    fn unicode_edit_in_string() {
+        let mut doc = Document::from_text("a•a");
+
+        doc.edit(&TextDocumentContentChangeEvent {
+            range: Some(Range {
+                start: Position {
+                    line: 0,
+                    character: 2,
+                },
+                end: Position {
+                    line: 0,
+                    character: 3,
+                },
+            }),
+            range_length: None,
+            text: "b".to_string(),
+        });
+
+        assert_eq!(doc.to_string(), "a•b");
     }
 
     #[test]
