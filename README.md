@@ -7,13 +7,10 @@ Tiny LSP server for highlighting color literals in source files. It implements o
 method. Designed for simplicity and performance - re-parses minimally and
 efficiently handles incremental document updates.
 
-## Installation
+## Packaging
 
-### Using cargo
-
-```bash
-cargo install chroma-ls
-```
+- [x] [`AUR`](https://aur.archlinux.org/packages/chroma-ls)
+- [x] [`crates.io`](https://crates.io/crates/chroma-ls)
 
 ## Editor Configuration
 
