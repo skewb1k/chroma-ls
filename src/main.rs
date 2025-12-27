@@ -1,25 +1,21 @@
-pub mod color;
-pub mod document;
-
-use document::Document;
-
 use std::collections::HashMap;
-use tokio::sync::RwLock;
 
-use tower_lsp_server::jsonrpc::Result;
+use tokio::sync::RwLock;
+use tower_lsp_server::jsonrpc::{Error, ErrorCode, Result};
 use tower_lsp_server::lsp_types::*;
 use tower_lsp_server::{Client, LanguageServer, LspService, Server};
 
+mod color;
+mod document;
+use crate::document::Document;
+
 struct Backend {
-    #[allow(dead_code)]
-    client: Client,
     documents: RwLock<HashMap<Uri, Document>>,
 }
 
 impl Backend {
-    fn new(client: Client) -> Self {
+    fn new(_client: Client) -> Self {
         Self {
-            client,
             documents: RwLock::new(HashMap::new()),
         }
     }
@@ -46,8 +42,6 @@ impl LanguageServer for Backend {
         })
     }
 
-    async fn initialized(&self, _: InitializedParams) {}
-
     async fn shutdown(&self) -> Result<()> {
         Ok(())
     }
@@ -55,39 +49,42 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri;
         let content = params.text_document.text;
+        let mut documents = self.documents.write().await;
 
-        self.documents
-            .write()
-            .await
-            .insert(uri, Document::from_text(&content));
+        documents.insert(uri, Document::from_text(&content));
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
-        let mut docs = self.documents.write().await;
+        let mut documents = self.documents.write().await;
 
-        // Get or create the document
-        let doc = docs.entry(uri.clone()).or_insert_with(Document::default);
+        let document = documents
+            .entry(uri.clone())
+            .or_insert_with(Document::default);
 
-        // Apply all changes in order
         for change in params.content_changes {
-            doc.edit(&change);
+            document.edit(&change);
         }
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let uri = params.text_document.uri;
-        self.documents.write().await.remove(&uri);
+        let mut documents = self.documents.write().await;
+
+        documents.remove(&uri);
     }
 
     async fn document_color(&self, params: DocumentColorParams) -> Result<Vec<ColorInformation>> {
-        Ok(self
-            .documents
-            .read()
-            .await
-            .get(&params.text_document.uri)
-            .map(|doc| doc.get_colors())
-            .unwrap_or_default())
+        let documents = self.documents.read().await;
+        let uri = &params.text_document.uri;
+
+        let document = documents.get(uri).ok_or_else(|| Error {
+            code: ErrorCode::InternalError,
+            message: format!("Document not found for {} URI", uri.as_str()).into(),
+            data: None,
+        })?;
+        let colors = document.get_colors();
+        Ok(colors)
     }
 }
 

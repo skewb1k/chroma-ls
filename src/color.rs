@@ -1,5 +1,6 @@
-use regex::Regex;
 use std::sync::OnceLock;
+
+use regex::Regex;
 use tower_lsp_server::lsp_types::{Color, ColorInformation, Position, Range};
 
 fn color_regex() -> &'static Regex {

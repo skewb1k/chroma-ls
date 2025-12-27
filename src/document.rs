@@ -1,4 +1,5 @@
 use std::fmt;
+
 use tower_lsp_server::lsp_types::ColorInformation;
 use tower_lsp_server::lsp_types::*;
 
@@ -28,7 +29,7 @@ impl fmt::Display for Document {
 }
 
 impl Document {
-    /// Creates a document from a string, splitting it into lines
+    /// Creates a document from a string, splitting it into lines.
     pub fn from_text(content: &str) -> Self {
         let lines: Vec<Line> = content
             .lines()
