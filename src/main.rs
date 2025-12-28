@@ -5,9 +5,7 @@ use tower_lsp_server::jsonrpc::{Error, ErrorCode, Result};
 use tower_lsp_server::lsp_types::*;
 use tower_lsp_server::{Client, LanguageServer, LspService, Server};
 
-mod color;
-mod document;
-use crate::document::Document;
+use chroma_ls::document::Document;
 
 struct Backend {
     documents: RwLock<HashMap<Uri, Document>>,
