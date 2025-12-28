@@ -144,12 +144,22 @@ mod tests {
     }
 
     #[test]
-    fn embedded_color() {
+    fn text_with_color() {
         let colors = parse_line_colors("Color: #ABCDEF;", 3);
         assert_eq!(colors.len(), 1);
 
         let c = &colors[0];
         assert_eq!(c.range.start.character, 7);
         assert_eq!(c.range.end.character, 14);
+    }
+
+    #[test]
+    fn embedded_color() {
+        let colors = parse_line_colors("123#ABCDEFasd", 3);
+        assert_eq!(colors.len(), 1);
+
+        let c = &colors[0];
+        assert_eq!(c.range.start.character, 3);
+        assert_eq!(c.range.end.character, 10);
     }
 }

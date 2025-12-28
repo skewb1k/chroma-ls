@@ -159,45 +159,7 @@ fn utf16_to_byte_index(line: &str, utf16_idx: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use crate::document::Document;
-    use tower_lsp_server::lsp_types::{Position, Range, TextDocumentContentChangeEvent};
-
-    macro_rules! assert_colors {
-        ($colors:expr, $(($r:expr, $g:expr, $b:expr, $a:expr, $start_line:expr, $start_char:expr, $end_line:expr, $end_char:expr)),+ $(,)?) => {{
-            let colors = &$colors;
-            let mut i = 0;
-            $(
-                {
-                    let c = &colors[i];
-                    assert_eq!(c.color.red, $r, "color[{}]: red mismatch", i);
-                    assert_eq!(c.color.green, $g, "color[{}]: green mismatch", i);
-                    assert_eq!(c.color.blue, $b, "color[{}]: blue mismatch", i);
-                    assert_eq!(c.color.alpha, $a, "color[{}]: alpha mismatch", i);
-                    assert_eq!(c.range.start.line, $start_line, "color[{}]: start line mismatch", i);
-                    assert_eq!(c.range.start.character, $start_char, "color[{}]: start char mismatch", i);
-                    assert_eq!(c.range.end.line, $end_line, "color[{}]: end line mismatch", i);
-                    assert_eq!(c.range.end.character, $end_char, "color[{}]: end char mismatch", i);
-                    i += 1;
-                }
-            )+
-            assert_eq!(colors.len(), i, "unexpected number of colors");
-        }};
-    }
-
-    #[test]
-    fn replace_text() {
-        let mut doc = Document::from_text("#FF0000");
-
-        assert_colors!(doc.get_colors(), (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7));
-
-        doc.edit(&TextDocumentContentChangeEvent {
-            range: None,
-            range_length: None,
-            text: "#00FF00".to_string(),
-        });
-        assert_eq!(doc.to_string(), "#00FF00");
-
-        assert_colors!(doc.get_colors(), (0.0, 1.0, 0.0, 1.0, 0, 0, 0, 7));
-    }
+    use tower_lsp_server::lsp_types::*;
 
     #[test]
     fn unicode_edit_in_string() {
@@ -221,11 +183,50 @@ mod tests {
         assert_eq!(doc.to_string(), "a•b");
     }
 
+    fn assert_colors_eq(
+        colors: Vec<ColorInformation>,
+        expected: &[(f32, f32, f32, f32, u32, u32, u32, u32)],
+    ) {
+        assert_eq!(colors.len(), expected.len(), "unexpected number of colors");
+        for (i, (c, &(r, g, b, a, sl, sc, el, ec))) in
+            colors.iter().zip(expected.iter()).enumerate()
+        {
+            assert_eq!(c.color.red, r, "color[{i}]: red mismatch");
+            assert_eq!(c.color.green, g, "color[{i}]: green mismatch");
+            assert_eq!(c.color.blue, b, "color[{i}]: blue mismatch");
+            assert_eq!(c.color.alpha, a, "color[{i}]: alpha mismatch");
+
+            assert_eq!(c.range.start.line, sl, "color[{i}]: start line mismatch");
+            assert_eq!(
+                c.range.start.character, sc,
+                "color[{i}]: start char mismatch"
+            );
+            assert_eq!(c.range.end.line, el, "color[{i}]: end line mismatch");
+            assert_eq!(c.range.end.character, ec, "color[{i}]: end char mismatch");
+        }
+    }
+
+    #[test]
+    fn replace_text() {
+        let mut doc = Document::from_text("#FF0000");
+
+        assert_colors_eq(doc.get_colors(), &[(1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7)]);
+
+        doc.edit(&TextDocumentContentChangeEvent {
+            range: None,
+            range_length: None,
+            text: "#00FF00".to_string(),
+        });
+        assert_eq!(doc.to_string(), "#00FF00");
+
+        assert_colors_eq(doc.get_colors(), &[(0.0, 1.0, 0.0, 1.0, 0, 0, 0, 7)]);
+    }
+
     #[test]
     fn append_end() {
         let mut doc = Document::from_text("#FF0000");
 
-        assert_colors!(doc.get_colors(), (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7));
+        assert_colors_eq(doc.get_colors(), &[(1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7)]);
 
         doc.edit(&TextDocumentContentChangeEvent {
             range: Some(Range {
@@ -243,10 +244,12 @@ mod tests {
         });
         assert_eq!(doc.to_string(), "#FF0000\n#00FF00");
 
-        assert_colors!(
+        assert_colors_eq(
             doc.get_colors(),
-            (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
-            (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7)
+            &[
+                (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
+                (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
+            ],
         );
     }
 
@@ -254,11 +257,13 @@ mod tests {
     fn append_middle() {
         let mut doc = Document::from_text("#FF0000\n#00FF00\n#0000FF");
 
-        assert_colors!(
+        assert_colors_eq(
             doc.get_colors(),
-            (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
-            (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
-            (0.0, 0.0, 1.0, 1.0, 2, 0, 2, 7),
+            &[
+                (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
+                (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
+                (0.0, 0.0, 1.0, 1.0, 2, 0, 2, 7),
+            ],
         );
 
         doc.edit(&TextDocumentContentChangeEvent {
@@ -277,12 +282,14 @@ mod tests {
         });
         assert_eq!(doc.to_string(), "#FF0000\n#000000\n#00FF00\n#0000FF");
 
-        assert_colors!(
+        assert_colors_eq(
             doc.get_colors(),
-            (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
-            (0.0, 0.0, 0.0, 1.0, 1, 0, 1, 7),
-            (0.0, 1.0, 0.0, 1.0, 2, 0, 2, 7),
-            (0.0, 0.0, 1.0, 1.0, 3, 0, 3, 7),
+            &[
+                (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
+                (0.0, 0.0, 0.0, 1.0, 1, 0, 1, 7),
+                (0.0, 1.0, 0.0, 1.0, 2, 0, 2, 7),
+                (0.0, 0.0, 1.0, 1.0, 3, 0, 3, 7),
+            ],
         );
     }
 
@@ -290,11 +297,13 @@ mod tests {
     fn delete_color_line() {
         let mut doc = Document::from_text("#FF0000\n#00FF00\n#0000FF");
 
-        assert_colors!(
+        assert_colors_eq(
             doc.get_colors(),
-            (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
-            (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
-            (0.0, 0.0, 1.0, 1.0, 2, 0, 2, 7),
+            &[
+                (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
+                (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
+                (0.0, 0.0, 1.0, 1.0, 2, 0, 2, 7),
+            ],
         );
 
         // Delete the middle line
@@ -314,10 +323,12 @@ mod tests {
         });
         assert_eq!(doc.to_string(), "#FF0000\n#0000FF");
 
-        assert_colors!(
+        assert_colors_eq(
             doc.get_colors(),
-            (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
-            (0.0, 0.0, 1.0, 1.0, 1, 0, 1, 7),
+            &[
+                (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
+                (0.0, 0.0, 1.0, 1.0, 1, 0, 1, 7),
+            ],
         );
     }
 
@@ -325,7 +336,7 @@ mod tests {
     fn delete_one_char() {
         let mut doc = Document::from_text("#FF0000");
 
-        assert_colors!(doc.get_colors(), (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7));
+        assert_colors_eq(doc.get_colors(), &[(1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7)]);
 
         // Delete the last char
         doc.edit(&TextDocumentContentChangeEvent {
@@ -351,7 +362,7 @@ mod tests {
     fn replace_partial_line() {
         let mut doc = Document::from_text("#FF0000");
 
-        assert_colors!(doc.get_colors(), (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7));
+        assert_colors_eq(doc.get_colors(), &[(1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7)]);
 
         // Replace last 4 characters "0000" → "00FF"
         doc.edit(&TextDocumentContentChangeEvent {
@@ -370,17 +381,19 @@ mod tests {
         });
         assert_eq!(doc.to_string(), "#FF00FF");
 
-        assert_colors!(doc.get_colors(), (1.0, 0.0, 1.0, 1.0, 0, 0, 0, 7));
+        assert_colors_eq(doc.get_colors(), &[(1.0, 0.0, 1.0, 1.0, 0, 0, 0, 7)]);
     }
 
     #[test]
     fn clear_document_then_add_new() {
         let mut doc = Document::from_text("#FF0000\n#00FF00");
 
-        assert_colors!(
+        assert_colors_eq(
             doc.get_colors(),
-            (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
-            (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
+            &[
+                (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
+                (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
+            ],
         );
 
         // Clear all content (simulate full replace)
@@ -401,14 +414,14 @@ mod tests {
         });
         assert_eq!(doc.to_string(), "#FFFFFF");
 
-        assert_colors!(doc.get_colors(), (1.0, 1.0, 1.0, 1.0, 0, 0, 0, 7),);
+        assert_colors_eq(doc.get_colors(), &[(1.0, 1.0, 1.0, 1.0, 0, 0, 0, 7)]);
     }
 
     #[test]
     fn multiple_incremental_edits() {
         let mut doc = Document::from_text("#FF0000");
 
-        assert_colors!(doc.get_colors(), (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),);
+        assert_colors_eq(doc.get_colors(), &[(1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7)]);
 
         // Append new color
         doc.edit(&TextDocumentContentChangeEvent {
@@ -427,10 +440,12 @@ mod tests {
         });
         assert_eq!(doc.to_string(), "#FF0000\n#00FF00");
 
-        assert_colors!(
+        assert_colors_eq(
             doc.get_colors(),
-            (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
-            (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
+            &[
+                (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
+                (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
+            ],
         );
 
         // Append another color
@@ -450,11 +465,13 @@ mod tests {
         });
         assert_eq!(doc.to_string(), "#FF0000\n#00FF00\n#0000FF");
 
-        assert_colors!(
+        assert_colors_eq(
             doc.get_colors(),
-            (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
-            (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
-            (0.0, 0.0, 1.0, 1.0, 2, 0, 2, 7),
+            &[
+                (1.0, 0.0, 0.0, 1.0, 0, 0, 0, 7),
+                (0.0, 1.0, 0.0, 1.0, 1, 0, 1, 7),
+                (0.0, 0.0, 1.0, 1.0, 2, 0, 2, 7),
+            ],
         );
     }
 }

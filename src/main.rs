@@ -58,10 +58,10 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri;
         let mut documents = self.documents.write().await;
 
+        // TODO: warn about error.
         let document = documents
-            .entry(uri.clone())
-            .or_insert_with(Document::default);
-
+            .get_mut(&uri)
+            .expect("document must exist on didChange");
         for change in params.content_changes {
             document.edit(&change);
         }
@@ -75,10 +75,10 @@ impl LanguageServer for Backend {
     }
 
     async fn document_color(&self, params: DocumentColorParams) -> Result<Vec<ColorInformation>> {
+        let uri = params.text_document.uri;
         let documents = self.documents.read().await;
-        let uri = &params.text_document.uri;
 
-        let document = documents.get(uri).ok_or_else(|| Error {
+        let document = documents.get(&uri).ok_or_else(|| Error {
             code: ErrorCode::InternalError,
             message: format!("Document not found for {} URI", uri.as_str()).into(),
             data: None,
