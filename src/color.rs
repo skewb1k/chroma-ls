@@ -184,3 +184,33 @@ mod tests {
         assert_eq!(c.range.end.character, 10);
     }
 }
+
+#[cfg(test)]
+mod benches {
+    use super::*;
+    use test::Bencher;
+
+    #[bench]
+    fn parse_line_colors_long_line(b: &mut Bencher) {
+        let input = test::black_box("#FF00FF".repeat(50));
+        b.iter(|| parse_line_colors(&input, 0));
+    }
+
+    #[bench]
+    fn parse_line_colors_unicode(b: &mut Bencher) {
+        let input = test::black_box("•••#FF00FF ••".repeat(50));
+        b.iter(|| parse_line_colors(&input, 0));
+    }
+
+    #[bench]
+    fn parse_line_colors_no_colors(b: &mut Bencher) {
+        let input = test::black_box("Some text #456 more text #AB#C".repeat(50));
+        b.iter(|| parse_line_colors(&input, 0));
+    }
+
+    #[bench]
+    fn parse_line_colors_empty(b: &mut Bencher) {
+        let input = test::black_box("");
+        b.iter(|| parse_line_colors(&input, 0));
+    }
+}
