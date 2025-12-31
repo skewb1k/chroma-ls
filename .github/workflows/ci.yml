@@ -2,8 +2,8 @@ name: CI
 on: push
 
 jobs:
-  format:
-    name: Format
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
