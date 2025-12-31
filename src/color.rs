@@ -1,62 +1,76 @@
-use std::sync::OnceLock;
-
-use regex::Regex;
 use tower_lsp_server::lsp_types::{Color, ColorInformation, Position, Range};
 
-fn color_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"#(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})(?:[0-9A-Fa-f]{2})?")
-            .unwrap()
-    })
-}
+/// Parses all hex color codes in a line and returns them as `ColorInformation`.
+pub fn parse_line_colors(line: &str, line_idx: usize) -> Vec<ColorInformation> {
+    let mut colors: Vec<ColorInformation> = Vec::new();
+    let mut chars = line.encode_utf16().peekable();
+    let mut pos: u32 = 0; // position in UTF-16 code units
 
-/// Converts a hex color string (e.g. `#RRGGBB` or `#RRGGBBAA`) into a `Color`.
-///
-/// This function assumes the input string matches the `color_regex()` pattern,
-/// meaning it always starts with `#` and contains 6 or 8 valid hexadecimal digits.
-fn hex_to_color(hex: &str) -> Color {
-    fn float_from_hex(hex: &str, i: usize) -> f32 {
-        u8::from_str_radix(&hex[i..i + 2], 16).unwrap() as f32 / 255.0
-    }
+    while let Some(&c) = chars.peek() {
+        pos += 1;
+        chars.next();
+        if c != '#' as u16 {
+            // Skip until first '#'
+            continue;
+        }
 
-    Color {
-        red: float_from_hex(hex, 1),
-        green: float_from_hex(hex, 3),
-        blue: float_from_hex(hex, 5),
-        alpha: if hex.len() == 9 {
-            float_from_hex(hex, 7)
+        let mut digits = [0u8; 8];
+        let mut length = 0;
+        // Replace "slots" in digits with parsed colors.
+        for slot in digits.iter_mut() {
+            // Try to parse hex digit
+            let Some(digit) = chars
+                .peek()
+                .and_then(|&c| char::from_u32(c as u32))
+                .and_then(|ch| ch.to_digit(16))
+                .map(|val| val as u8)
+            else {
+                break;
+            };
+            *slot = digit;
+            length += 1;
+            pos += 1;
+            chars.next();
+        }
+        // Fallback to length 6 if 7 digits was parsed.
+        if length == 7 {
+            length = 6;
+            pos -= 1
+        }
+
+        if length < 6 {
+            continue;
+        }
+
+        let red = (digits[0] * 16 + digits[1]) as f32 / 255.0;
+        let green = (digits[2] * 16 + digits[3]) as f32 / 255.0;
+        let blue = (digits[4] * 16 + digits[5]) as f32 / 255.0;
+        let alpha = if length == 8 {
+            (digits[6] * 16 + digits[7]) as f32 / 255.0
         } else {
             1.0
-        },
-    }
-}
+        };
 
-fn byte_to_utf16_col(line: &str, byte_idx: usize) -> u32 {
-    line[..byte_idx].encode_utf16().count() as u32
-}
-
-pub fn parse_line_colors(line: &str, line_idx: usize) -> Vec<ColorInformation> {
-    color_regex()
-        .find_iter(line)
-        .map(|mat| {
-            let start_utf16 = byte_to_utf16_col(line, mat.start());
-            let end_utf16 = byte_to_utf16_col(line, mat.end());
-            ColorInformation {
-                range: Range {
-                    start: Position {
-                        line: line_idx as u32,
-                        character: start_utf16,
-                    },
-                    end: Position {
-                        line: line_idx as u32,
-                        character: end_utf16,
-                    },
+        colors.push(ColorInformation {
+            range: Range {
+                start: Position {
+                    line: line_idx as u32,
+                    character: pos - (1 + length),
                 },
-                color: hex_to_color(mat.as_str()),
-            }
-        })
-        .collect()
+                end: Position {
+                    line: line_idx as u32,
+                    character: pos,
+                },
+            },
+            color: Color {
+                red,
+                green,
+                blue,
+                alpha,
+            },
+        });
+    }
+    colors
 }
 
 #[cfg(test)]
