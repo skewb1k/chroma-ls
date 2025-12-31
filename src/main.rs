@@ -49,7 +49,7 @@ impl LanguageServer for Backend {
         let content = params.text_document.text;
         let mut documents = self.documents.write().await;
 
-        documents.insert(uri, Document::from_text(&content));
+        documents.insert(uri, Document::from(content.as_str()));
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
