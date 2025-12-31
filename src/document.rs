@@ -1,5 +1,4 @@
-use tower_lsp_server::lsp_types::ColorInformation;
-use tower_lsp_server::lsp_types::*;
+use tower_lsp_server::ls_types::{ColorInformation, TextDocumentContentChangeEvent};
 
 use crate::color::parse_line_colors;
 
@@ -161,8 +160,11 @@ fn utf16_to_byte_index(line: &str, utf16_idx: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use tower_lsp_server::ls_types::{
+        ColorInformation, Position, Range, TextDocumentContentChangeEvent,
+    };
+
     use crate::document::Document;
-    use tower_lsp_server::lsp_types::*;
 
     #[test]
     fn unicode_edit_in_string() {

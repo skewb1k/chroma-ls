@@ -2,7 +2,12 @@ use std::collections::HashMap;
 
 use tokio::sync::RwLock;
 use tower_lsp_server::jsonrpc::{Error, ErrorCode, Result};
-use tower_lsp_server::lsp_types::*;
+use tower_lsp_server::ls_types::{
+    ColorInformation, ColorProviderCapability, DidChangeTextDocumentParams,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentColorParams, InitializeParams,
+    InitializeResult, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextDocumentSyncOptions, Uri,
+};
 use tower_lsp_server::{Client, LanguageServer, LspService, Server};
 
 use chroma_ls::document::Document;
