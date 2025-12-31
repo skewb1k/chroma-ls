@@ -3,12 +3,12 @@ use tower_lsp_server::ls_types::{Color, ColorInformation, Position, Range};
 /// Parses all hex color codes in a line and returns them as `ColorInformation`.
 pub fn parse_line_colors(line: &str, line_idx: usize) -> Vec<ColorInformation> {
     let mut colors: Vec<ColorInformation> = Vec::new();
-    let mut chars = line.encode_utf16().peekable();
+    let mut chars = line.encode_utf16();
     let mut pos: u32 = 0; // position in UTF-16 code units
 
-    while let Some(&c) = chars.peek() {
+    while let Some(c) = chars.next() {
         pos += 1;
-        chars.next();
+        println!("{} {}", pos, char::from_u32(c as u32).unwrap());
         if c != '#' as u16 {
             // Skip until first '#'
             continue;
@@ -19,23 +19,21 @@ pub fn parse_line_colors(line: &str, line_idx: usize) -> Vec<ColorInformation> {
         // Replace "slots" in digits with parsed colors.
         for slot in digits.iter_mut() {
             // Try to parse hex digit
-            let Some(digit) = chars
-                .peek()
-                .and_then(|&c| char::from_u32(c as u32))
-                .and_then(|ch| ch.to_digit(16))
-                .map(|val| val as u8)
-            else {
+            pos += 1;
+            let Some(c) = chars.next() else {
                 break;
             };
-            *slot = digit;
+            let ch = char::from_u32(c as u32).unwrap();
+            let Some(digit) = ch.to_digit(16) else {
+                break;
+            };
+            *slot = digit as u8;
             length += 1;
-            pos += 1;
-            chars.next();
         }
         // Fallback to length 6 if 7 digits was parsed.
         if length == 7 {
             length = 6;
-            pos -= 1
+            pos -= 1;
         }
 
         if length < 6 {
@@ -51,15 +49,16 @@ pub fn parse_line_colors(line: &str, line_idx: usize) -> Vec<ColorInformation> {
             1.0
         };
 
+        dbg!(line, pos, length);
         colors.push(ColorInformation {
             range: Range {
                 start: Position {
                     line: line_idx as u32,
-                    character: pos - (1 + length),
+                    character: pos - (2 + length),
                 },
                 end: Position {
                     line: line_idx as u32,
-                    character: pos,
+                    character: pos - 1,
                 },
             },
             color: Color {
@@ -140,18 +139,18 @@ mod tests {
 
     #[test]
     fn parse_line_colors_multiple_colors() {
-        let colors = parse_line_colors("#FF0000#00FF00#0000FF", 0);
+        let colors = parse_line_colors("#FF0000 #00FF00 #0000FF", 0);
         assert_eq!(colors.len(), 3);
 
         assert_eq!(colors[0].range.start.character, 0);
-        assert_eq!(colors[1].range.start.character, 7);
-        assert_eq!(colors[2].range.start.character, 14);
+        assert_eq!(colors[1].range.start.character, 8);
+        assert_eq!(colors[2].range.start.character, 16);
     }
 
     #[test]
     fn parse_line_colors_no_colors() {
         let colors = parse_line_colors("#### no colors here #A 161616 #FF FF FF", 0);
-        assert!(colors.is_empty());
+        assert_eq!(colors, Vec::new());
     }
 
     #[test]
@@ -167,20 +166,18 @@ mod tests {
     #[test]
     fn parse_line_colors_hash_before() {
         let colors = parse_line_colors("#A#ABCDEF", 0);
-        assert_eq!(colors.len(), 1);
+        assert_eq!(colors, Vec::new());
+    }
 
-        let c = &colors[0];
-        assert_eq!(c.range.start.character, 2);
-        assert_eq!(c.range.end.character, 9);
+    #[test]
+    fn parse_line_colors_seven_digits() {
+        let colors = parse_line_colors("#FF0000a#00FF00", 0);
+        assert_eq!(colors, Vec::new());
     }
 
     #[test]
     fn parse_line_colors_embedded_color() {
         let colors = parse_line_colors("123#ABCDEFasd", 0);
-        assert_eq!(colors.len(), 1);
-
-        let c = &colors[0];
-        assert_eq!(c.range.start.character, 3);
-        assert_eq!(c.range.end.character, 10);
+        assert_eq!(colors, Vec::new());
     }
 }
