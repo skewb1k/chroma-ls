@@ -36,6 +36,7 @@ impl LanguageServer for Backend {
                     },
                 )),
                 color_provider: Some(ColorProviderCapability::Simple(true)),
+                // TODO: support UTF8 and UTF32 position encodings.
                 ..Default::default()
             },
             server_info: Some(ServerInfo {

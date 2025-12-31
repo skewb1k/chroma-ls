@@ -46,6 +46,7 @@ impl From<&str> for Document {
 impl Document {
     pub fn get_colors(&self) -> Vec<ColorInformation> {
         // TODO: do smarter than collecting lines.
+        // TODO: process each line in parallel.
         self.lines
             .iter()
             .flat_map(|line| line.colors.clone())
@@ -76,6 +77,7 @@ impl Document {
                     self.lines.push(Line::default());
                 }
 
+                // TODO: refactor.
                 let start_byte = utf16_to_byte_index(
                     &self.lines[start_line].text,
                     range.start.character as usize,
@@ -93,7 +95,7 @@ impl Document {
                     .lines()
                     .map(|line| Line {
                         text: line.to_string(),
-                        colors: vec![],
+                        colors: Vec::new(),
                     })
                     .collect();
 
@@ -106,12 +108,12 @@ impl Document {
                 if new_lines.is_empty() {
                     new_lines.push(Line {
                         text: format!("{}{}", prefix, suffix),
-                        colors: vec![],
+                        colors: Vec::new(),
                     });
                 } else {
-                    new_lines[0].text = format!("{}{}", prefix, new_lines[0].text);
+                    new_lines[0].text.insert_str(0, prefix);
                     let last_idx = new_lines.len() - 1;
-                    new_lines[last_idx].text = format!("{}{}", new_lines[last_idx].text, suffix);
+                    new_lines[last_idx].text.push_str(suffix);
                 }
 
                 // Reparse colors for each new line
@@ -119,11 +121,9 @@ impl Document {
                     line.colors = parse_line_colors(&line.text, start_line + i);
                 }
 
-                // Save number of lines replaced
                 let replaced_line_count = end_line - start_line + 1;
-
-                // Replace lines in the document
-                // Adjust line numbers of all colors after the edited range
+                // Replace lines in the document.
+                // Adjust line numbers of all colors after the edited range.
                 let line_delta = new_lines.len() as isize - replaced_line_count as isize;
                 if line_delta != 0 {
                     for line in &mut self.lines[start_line + replaced_line_count..] {
