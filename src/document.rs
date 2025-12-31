@@ -14,6 +14,7 @@ impl std::fmt::Display for Line {
     }
 }
 
+#[derive(Default)]
 pub struct Document {
     lines: Vec<Line>,
 }
@@ -30,20 +31,25 @@ impl std::fmt::Display for Document {
 impl From<&str> for Document {
     /// Converts a `&str` into a `Document` by splitting it into lines.
     fn from(s: &str) -> Self {
-        let lines = s
-            .lines()
-            .enumerate()
-            .map(|(idx, line)| Line {
-                text: line.to_string(),
-                colors: parse_line_colors(line, idx),
-            })
-            .collect();
-
-        Self { lines }
+        let mut document = Self::default();
+        document.set_text(s);
+        document
     }
 }
 
 impl Document {
+    /// Replaces the internal text of the `Document` with the given string.
+    pub fn set_text(&mut self, s: &str) {
+        let lines: Vec<&str> = s.lines().collect();
+        self.lines.clear();
+        self.lines.reserve(lines.len());
+        self.lines
+            .extend(lines.into_iter().enumerate().map(|(i, line)| Line {
+                text: line.to_string(),
+                colors: parse_line_colors(line, i),
+            }));
+    }
+
     pub fn get_colors(&self) -> Vec<ColorInformation> {
         // TODO: do smarter than collecting lines.
         // TODO: process each line in parallel.
@@ -57,15 +63,7 @@ impl Document {
         match &change.range {
             // Full content replace
             None => {
-                self.lines = change
-                    .text
-                    .lines()
-                    .enumerate()
-                    .map(|(i, line)| Line {
-                        text: line.to_string(),
-                        colors: parse_line_colors(line, i),
-                    })
-                    .collect();
+                self.set_text(&change.text);
             }
             // Partial change
             Some(range) => {
