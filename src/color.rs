@@ -140,12 +140,12 @@ mod tests {
 
     #[test]
     fn parse_line_colors_multiple_colors() {
-        let colors = parse_line_colors("#FF0000#00FF00#0000FF", 0);
+        let colors = parse_line_colors("#FF0000 #00FF00 #0000FF", 0);
         assert_eq!(colors.len(), 3);
 
         assert_eq!(colors[0].range.start.character, 0);
-        assert_eq!(colors[1].range.start.character, 7);
-        assert_eq!(colors[2].range.start.character, 14);
+        assert_eq!(colors[1].range.start.character, 8);
+        assert_eq!(colors[2].range.start.character, 16);
     }
 
     #[test]
