@@ -76,6 +76,7 @@ impl Document {
                 }
 
                 // TODO: refactor.
+                // TODO: explore idea of storing text in UTF-16.
                 let start_byte = utf16_to_byte_index(
                     &self.lines[start_line].text,
                     range.start.character as usize,
@@ -358,7 +359,7 @@ mod tests {
         });
         assert_eq!(doc.to_string(), "#FF000\n");
 
-        assert!(doc.get_colors().is_empty());
+        assert_eq!(doc.get_colors(), Vec::new());
     }
 
     #[test]
@@ -407,7 +408,7 @@ mod tests {
         });
         assert_eq!(doc.to_string(), "");
 
-        assert!(doc.get_colors().is_empty());
+        assert_eq!(doc.get_colors(), Vec::new());
 
         // Add a new color
         doc.edit(&TextDocumentContentChangeEvent {

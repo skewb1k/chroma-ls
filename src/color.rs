@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn parse_line_colors_no_colors() {
         let colors = parse_line_colors("#### no colors here #A 161616 #FF FF FF", 0);
-        assert!(colors.is_empty());
+        assert_eq!(colors, Vec::new());
     }
 
     #[test]
