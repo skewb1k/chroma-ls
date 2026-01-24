@@ -12,10 +12,6 @@ strip = true
 lto = true
 panic = "abort"
 
-[[bin]]
-name = "chroma-ls"
-path = "src/main.rs"
-
 [dependencies]
 tokio = { version = "1", features = ["io-std", "macros", "rt-multi-thread"] }
 tower-lsp-server = "0.23"
