@@ -7,11 +7,6 @@ description = "LSP server for highlighting colors in source files"
 license = "MIT"
 repository = "https://github.com/skewb1k/chroma-ls"
 
-[profile.release]
-strip = true
-lto = true
-panic = "abort"
-
 [dependencies]
 tokio = { version = "1", features = ["io-std", "macros", "rt-multi-thread"] }
 tower-lsp-server = "0.23"
