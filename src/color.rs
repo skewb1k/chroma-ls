@@ -3,74 +3,80 @@ use tower_lsp_server::ls_types::{Color, ColorInformation, Position, Range};
 /// Parses all hex color codes in a line and returns them as `ColorInformation`.
 pub fn parse_line_colors(line: &str, line_idx: usize) -> Vec<ColorInformation> {
     let mut colors: Vec<ColorInformation> = Vec::new();
-    let mut chars = line.encode_utf16().peekable();
-    let mut pos: u32 = 0; // position in UTF-16 code units
 
-    while let Some(&c) = chars.peek() {
-        pos += 1;
-        chars.next();
-        if c != '#' as u16 {
+    let chars: Vec<u16> = line.encode_utf16().collect();
+    let mut i: usize = 0;
+    while i < chars.len() {
+        let current_unit = chars[i];
+        i += 1;
+
+        if current_unit != '#' as u16 {
             // Skip until first '#'
             continue;
         }
 
         let mut digits = [0u8; 8];
-        let mut length = 0;
-        // Replace "slots" in digits with parsed colors.
+        let mut length: u32 = 0;
+        // Replace "slots" in digits with parsed colors
         for slot in digits.iter_mut() {
-            // Try to parse hex digit
-            let Some(digit) = chars
-                .peek()
-                .and_then(|&c| char::from_u32(c as u32))
-                .and_then(|ch| ch.to_digit(16))
-                .map(|val| val as u8)
-            else {
+            if i >= chars.len() {
+                break;
+            }
+            let current_unit = chars[i];
+            let current_char = char::from_u32(current_unit as u32).unwrap();
+
+            let Some(digit) = current_char.to_digit(16) else {
                 break;
             };
-            *slot = digit;
-            length += 1;
-            pos += 1;
-            chars.next();
-        }
-        // Fallback to length 6 if 7 digits was parsed.
-        if length == 7 {
-            length = 6;
-            pos -= 1
-        }
+            *slot = digit as u8;
 
+            length += 1;
+            i += 1;
+        }
         if length < 6 {
             continue;
         }
 
-        let red = (digits[0] * 16 + digits[1]) as f32 / 255.0;
-        let green = (digits[2] * 16 + digits[3]) as f32 / 255.0;
-        let blue = (digits[4] * 16 + digits[5]) as f32 / 255.0;
-        let alpha = if length == 8 {
-            (digits[6] * 16 + digits[7]) as f32 / 255.0
-        } else {
-            1.0
-        };
+        // Fallback to length 6 if 7 digits was parsed
+        if length == 7 {
+            length = 6;
+            i -= 1;
+        }
 
+        let color = color_from_digits(digits, length);
         colors.push(ColorInformation {
             range: Range {
                 start: Position {
                     line: line_idx as u32,
-                    character: pos - (1 + length),
+                    character: i as u32 - (1 + length),
                 },
                 end: Position {
                     line: line_idx as u32,
-                    character: pos,
+                    character: i as u32,
                 },
             },
-            color: Color {
-                red,
-                green,
-                blue,
-                alpha,
-            },
+            color,
         });
     }
     colors
+}
+
+fn color_from_digits(digits: [u8; 8], length: u32) -> Color {
+    let red = (digits[0] * 16 + digits[1]) as f32 / 255.0;
+    let green = (digits[2] * 16 + digits[3]) as f32 / 255.0;
+    let blue = (digits[4] * 16 + digits[5]) as f32 / 255.0;
+    let alpha = if length == 8 {
+        (digits[6] * 16 + digits[7]) as f32 / 255.0
+    } else {
+        1.0
+    };
+
+    Color {
+        red,
+        green,
+        blue,
+        alpha,
+    }
 }
 
 #[cfg(test)]
