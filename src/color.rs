@@ -82,9 +82,9 @@ mod tests {
         let colors = parse_line_colors("#FF0000", 10);
         assert_eq!(colors.len(), 1);
 
-        let c = &colors[0];
-        assert_eq!(c.range.start.line, 10);
-        assert_eq!(c.range.end.line, 10);
+        let color_info = &colors[0];
+        assert_eq!(color_info.range.start.line, 10);
+        assert_eq!(color_info.range.end.line, 10);
     }
 
     #[test]
@@ -92,12 +92,12 @@ mod tests {
         let colors = parse_line_colors("#FF0000", 0);
         assert_eq!(colors.len(), 1);
 
-        let c = &colors[0];
-        assert_eq!(c.color.red, 1.0);
-        assert_eq!(c.color.green, 0.0);
-        assert_eq!(c.color.blue, 0.0);
-        assert_eq!(c.range.start.character, 0);
-        assert_eq!(c.range.end.character, 7);
+        let color_info = &colors[0];
+        assert_eq!(color_info.color.red, 1.0);
+        assert_eq!(color_info.color.green, 0.0);
+        assert_eq!(color_info.color.blue, 0.0);
+        assert_eq!(color_info.range.start.character, 0);
+        assert_eq!(color_info.range.end.character, 7);
     }
 
     #[test]
@@ -105,12 +105,12 @@ mod tests {
         let colors = parse_line_colors("#ff0000", 0);
         assert_eq!(colors.len(), 1);
 
-        let c = &colors[0];
-        assert_eq!(c.color.red, 1.0);
-        assert_eq!(c.color.green, 0.0);
-        assert_eq!(c.color.blue, 0.0);
-        assert_eq!(c.range.start.character, 0);
-        assert_eq!(c.range.end.character, 7);
+        let color_info = &colors[0];
+        assert_eq!(color_info.color.red, 1.0);
+        assert_eq!(color_info.color.green, 0.0);
+        assert_eq!(color_info.color.blue, 0.0);
+        assert_eq!(color_info.range.start.character, 0);
+        assert_eq!(color_info.range.end.character, 7);
     }
 
     #[test]
@@ -118,11 +118,11 @@ mod tests {
         let colors = parse_line_colors("#11223344", 0);
         assert_eq!(colors.len(), 1);
 
-        let c = &colors[0];
-        assert_eq!(c.color.red, 0x11 as f32 / 255.0);
-        assert_eq!(c.color.green, 0x22 as f32 / 255.0);
-        assert_eq!(c.color.blue, 0x33 as f32 / 255.0);
-        assert_eq!(c.color.alpha, 0x44 as f32 / 255.0);
+        let color_info = &colors[0];
+        assert_eq!(color_info.color.red, 0x11 as f32 / 255.0);
+        assert_eq!(color_info.color.green, 0x22 as f32 / 255.0);
+        assert_eq!(color_info.color.blue, 0x33 as f32 / 255.0);
+        assert_eq!(color_info.color.alpha, 0x44 as f32 / 255.0);
     }
 
     #[test]
@@ -130,12 +130,12 @@ mod tests {
         let colors = parse_line_colors("•#FF0000•", 0);
         assert_eq!(colors.len(), 1);
 
-        let c = &colors[0];
-        assert_eq!(c.color.red, 1.0);
-        assert_eq!(c.color.green, 0.0);
-        assert_eq!(c.color.blue, 0.0);
-        assert_eq!(c.range.start.character, 1);
-        assert_eq!(c.range.end.character, 8);
+        let color_info = &colors[0];
+        assert_eq!(color_info.color.red, 1.0);
+        assert_eq!(color_info.color.green, 0.0);
+        assert_eq!(color_info.color.blue, 0.0);
+        assert_eq!(color_info.range.start.character, 1);
+        assert_eq!(color_info.range.end.character, 8);
     }
 
     #[test]
@@ -159,9 +159,9 @@ mod tests {
         let colors = parse_line_colors("Color: #ABCDEF;", 0);
         assert_eq!(colors.len(), 1);
 
-        let c = &colors[0];
-        assert_eq!(c.range.start.character, 7);
-        assert_eq!(c.range.end.character, 14);
+        let color = &colors[0];
+        assert_eq!(color.range.start.character, 7);
+        assert_eq!(color.range.end.character, 14);
     }
 
     #[test]
@@ -169,9 +169,9 @@ mod tests {
         let colors = parse_line_colors("#A#ABCDEF", 0);
         assert_eq!(colors.len(), 1);
 
-        let c = &colors[0];
-        assert_eq!(c.range.start.character, 2);
-        assert_eq!(c.range.end.character, 9);
+        let color_info = &colors[0];
+        assert_eq!(color_info.range.start.character, 2);
+        assert_eq!(color_info.range.end.character, 9);
     }
 
     #[test]
@@ -179,8 +179,8 @@ mod tests {
         let colors = parse_line_colors("123#ABCDEFasd", 0);
         assert_eq!(colors.len(), 1);
 
-        let c = &colors[0];
-        assert_eq!(c.range.start.character, 3);
-        assert_eq!(c.range.end.character, 10);
+        let color_info = &colors[0];
+        assert_eq!(color_info.range.start.character, 3);
+        assert_eq!(color_info.range.end.character, 10);
     }
 }
